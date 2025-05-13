@@ -5,7 +5,7 @@ import cv2
 import cvzone
 import math
 import numpy as np
-from utils import score, detect_down, detect_up, in_hoop_region, clean_hoop_pos, clean_ball_pos, get_device
+from utils import score, detect_down, detect_up, in_hoop_region, clean_hoop_pos, clean_ball_pos, get_device, is_overlap
 
 
 class ShotDetector:
@@ -13,6 +13,10 @@ class ShotDetector:
         # Load the YOLO model created from main.py - change text to your relative path
         self.overlay_text = "Waiting..."
         self.model = YOLO("best.pt")
+        # 加载通用模型
+        self.person_model = YOLO("yolov10n.pt")
+        self.person_model.fuse()
+        self.person_model.half()
         
         # Uncomment this line to accelerate inference. Note that this may cause errors in some setups.
         #self.model.half()
@@ -23,7 +27,7 @@ class ShotDetector:
         # self.cap = cv2.VideoCapture(0)
 
         # Use video - replace text with your video path
-        self.cap = cv2.VideoCapture("video_test_5.mp4")
+        self.cap = cv2.VideoCapture("video_test_hat.mp4")
 
         self.ball_pos = []  # array of tuples ((x_pos, y_pos), frame count, width, height, conf)
         self.hoop_pos = []  # array of tuples ((x_pos, y_pos), frame count, width, height, conf)
@@ -56,6 +60,14 @@ class ShotDetector:
                 break
 
             results = self.model(self.frame, stream=True, device=self.device)
+            #并行检测人物
+            person_results = self.person_model(self.frame, stream=True, device=self.device, classes=[0])
+            person_boxes = []
+            for r in person_results:
+                boxes = r.boxes
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    person_boxes.append((x1, y1, x2, y2))
 
             for r in results:
                 boxes = r.boxes
@@ -76,8 +88,10 @@ class ShotDetector:
 
                     # Only create ball points if high confidence or near hoop
                     if (conf > .3 or (in_hoop_region(center, self.hoop_pos) and conf > 0.15)) and current_class == "Basketball":
-                        self.ball_pos.append((center, self.frame_count, w, h, conf))
-                        cvzone.cornerRect(self.frame, (x1, y1, w, h))
+                        #重叠检测
+                        if not any(is_overlap((x1, y1, x2, y2), p_box) for p_box in person_boxes):
+                            self.ball_pos.append((center, self.frame_count, w, h, conf))
+                            cvzone.cornerRect(self.frame, (x1, y1, w, h))
 
                     # Create hoop points if high confidence
                     if conf > .5 and current_class == "Basketball Hoop":

@@ -113,7 +113,8 @@ def clean_ball_pos(ball_pos, frame_count):
             ball_pos.pop()
 
         # Ball should be relatively square
-        elif (w2*1.4 < h2) or (h2*1.4 < w2):
+        #考虑拖影放宽高宽比限制
+        elif (w2*2 < h2) or (h2*1.4 < w2):
             ball_pos.pop()
 
     # Remove points older than 30 frames
@@ -159,3 +160,18 @@ def clean_hoop_pos(hoop_pos):
         hoop_pos.pop(0)
 
     return hoop_pos
+
+#重叠检测
+def is_overlap(ball_box, person_box):
+    x1 = max(ball_box[0], person_box[0])
+    y1 = max(ball_box[1], person_box[1])
+    x2 = min(ball_box[2], person_box[2])
+    y2 = min(ball_box[3], person_box[3])
+    
+    if x1 > x2 or y1 > y2:
+        return False
+    
+    intersection = (x2 - x1) * (y2 - y1)
+    ball_area = (ball_box[2] - ball_box[0]) * (ball_box[3] - ball_box[1])
+    # 重叠超过25%视为干扰
+    return intersection / ball_area > 0.25
