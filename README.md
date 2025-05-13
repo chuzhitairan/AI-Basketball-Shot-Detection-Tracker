@@ -1,3 +1,12 @@
+#### 更新​
+1. ​人体检测过滤干扰​
+   * ​问题​：篮球检测易受头部/帽子误判
+   * ​方案​：新增独立人体检测模型（YOLOv10n），与篮球模型并行运行
+2. ​动态宽高比适应拖影​
+    * ​问题​：末端垂直高速运动导致篮球形状拉伸
+    * ​方案​：高宽比阈值由1.4放宽至2
+
+
 # Real-Time AI Basketball Shot Detection with YOLOv8 and OpenCV
 Author: [Avi Shah](https://www.linkedin.com/in/-avishah/) (2023)
 
